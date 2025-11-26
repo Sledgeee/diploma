@@ -1,0 +1,163 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  LIBRARIAN
+  READER
+}
+
+enum BookStatus {
+  AVAILABLE
+  BORROWED
+  RESERVED
+  MAINTENANCE
+  LOST
+}
+
+enum LoanStatus {
+  ACTIVE
+  RETURNED
+  OVERDUE
+}
+
+enum ReservationStatus {
+  PENDING
+  READY
+  COMPLETED
+  CANCELLED
+  EXPIRED
+}
+
+enum FineStatus {
+  PENDING
+  PAID
+  WAIVED
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  firstName String   @map("first_name")
+  lastName  String   @map("last_name")
+  role      UserRole @default(READER)
+  phone     String?
+  address   String?
+  isActive  Boolean  @default(true) @map("is_active")
+  balance   Decimal  @default(0) @db.Decimal(10, 2)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  loans        Loan[]
+  reservations Reservation[]
+  fines        Fine[]
+  reviews      Review[]
+
+  @@map("users")
+}
+
+model Book {
+  id              String     @id @default(uuid())
+  isbn            String
+  title           String
+  author          String
+  publisher       String?
+  publishYear     Int?       @map("publish_year")
+  description     String?    @db.Text
+  coverImage      String?    @map("cover_image")
+  genres          String[]
+  totalCopies     Int        @default(0) @map("total_copies")
+  availableCopies Int        @default(0) @map("available_copies")
+  status          BookStatus @default(AVAILABLE)
+  borrowCount     Int        @default(0) @map("borrow_count")
+  averageRating   Decimal    @default(0) @map("average_rating") @db.Decimal(3, 2)
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+
+  loans        Loan[]
+  reservations Reservation[]
+  reviews      Review[]
+
+  @@index([title, author])
+  @@index([genres])
+  @@map("books")
+}
+
+model Loan {
+  id         String     @id @default(uuid())
+  userId     String     @map("user_id")
+  bookId     String     @map("book_id")
+  borrowDate DateTime   @map("borrow_date")
+  dueDate    DateTime   @map("due_date")
+  returnDate DateTime?  @map("return_date")
+  status     LoanStatus @default(ACTIVE)
+  createdAt  DateTime   @default(now()) @map("created_at")
+
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book Book  @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  fine Fine?
+
+  @@index([userId])
+  @@index([bookId])
+  @@index([status])
+  @@index([dueDate])
+  @@map("loans")
+}
+
+model Reservation {
+  id         String            @id @default(uuid())
+  userId     String            @map("user_id")
+  bookId     String            @map("book_id")
+  status     ReservationStatus @default(PENDING)
+  expiryDate DateTime          @map("expiry_date")
+  createdAt  DateTime          @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book Book @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([bookId])
+  @@index([status])
+  @@map("reservations")
+}
+
+model Fine {
+  id        String     @id @default(uuid())
+  userId    String     @map("user_id")
+  loanId    String     @unique @map("loan_id")
+  amount    Decimal    @db.Decimal(10, 2)
+  status    FineStatus @default(PENDING)
+  reason    String?    @db.Text
+  paidDate  DateTime?  @map("paid_date")
+  createdAt DateTime   @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  loan Loan @relation(fields: [loanId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@map("fines")
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  bookId    String   @map("book_id")
+  rating    Int      @default(5)
+  comment   String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book Book @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, bookId])
+  @@index([bookId])
+  @@map("reviews")
+}
