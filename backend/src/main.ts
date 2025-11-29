@@ -10,6 +10,8 @@ import helmet from 'helmet';
 import { mw } from 'request-ip';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
+import { join } from 'path';
+import { json, urlencoded } from 'express';
 
 BigInt.prototype['toJSON'] = function (): string {
   return this.toString();
@@ -18,6 +20,9 @@ BigInt.prototype['toJSON'] = function (): string {
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const config = app.get(ConfigService);
+
+  app.use(json({ limit: '50mb' }));
+  app.use(urlencoded({ limit: '50mb', extended: true }));
 
   app.enableCors({
     origin: config.get<string>('FRONTEND_URL'),
@@ -36,6 +41,9 @@ async function bootstrap() {
   app.use(mw());
 
   app.setGlobalPrefix(API_PREFIX);
+  app.useStaticAssets(join(process.cwd(), 'uploads'), {
+    prefix: '/uploads/',
+  });
 
   app.useGlobalPipes(
     new ValidationPipe({

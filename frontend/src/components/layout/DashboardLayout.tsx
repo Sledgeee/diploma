@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { 
   BookOpen, 
   LayoutDashboard, 
@@ -76,8 +77,8 @@ export function DashboardLayout() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Mobile menu button */}
-      <div className="lg:hidden fixed top-4 left-4 z-50">
+      {/* Top bar for mobile */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-card border-b h-16 flex items-center justify-between px-4">
         <Button
           variant="outline"
           size="icon"
@@ -85,6 +86,13 @@ export function DashboardLayout() {
         >
           {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
         </Button>
+        
+        <div className="flex items-center space-x-2">
+          <BookOpen className="h-6 w-6 text-primary" />
+          <span className="font-bold">Бібліотека</span>
+        </div>
+
+        <NotificationBell />
       </div>
 
       {/* Sidebar */}
@@ -97,11 +105,15 @@ export function DashboardLayout() {
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="p-6 border-b">
+          <div className="p-6 border-b flex items-center justify-between">
             <Link to="/dashboard" className="flex items-center space-x-2">
               <BookOpen className="h-8 w-8 text-primary" />
               <span className="text-xl font-bold">Бібліотека</span>
             </Link>
+            {/* Notification bell for desktop */}
+            <div className="hidden lg:block">
+              <NotificationBell />
+            </div>
           </div>
 
           {/* Navigation */}
@@ -168,7 +180,7 @@ export function DashboardLayout() {
       )}
 
       {/* Main content */}
-      <main className="lg:ml-64 min-h-screen">
+      <main className="lg:ml-64 min-h-screen pt-16 lg:pt-0">
         <div className="p-4 lg:p-8">
           <Outlet />
         </div>

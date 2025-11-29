@@ -8,10 +8,10 @@ import { PrivateRoute } from './components/auth/PrivateRoute';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { Dashboard } from './pages/Dashboard';
 import { Books } from './pages/Books';
-// import { BookDetails } from './pages/BookDetails';
-// import { MyLoans } from './pages/MyLoans';
-// import { Profile } from './pages/Profile';
-// import { Statistics } from './pages/Statistics';
+import { BookDetails } from './pages/BookDetails';
+import { MyLoans } from './pages/MyLoans';
+import { Profile } from './pages/Profile';
+import { Statistics } from './pages/Statistics';
 
 function App() {
   return (
@@ -34,17 +34,17 @@ function App() {
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="books" element={<Books />} />
-            {/* <Route path="books/:id" element={<BookDetails />} /> */}
-            {/* <Route path="my-loans" element={<MyLoans />} /> */}
-            {/* <Route path="profile" element={<Profile />} /> */}
-            {/* <Route
+            <Route path="books/:id" element={<BookDetails />} />
+            <Route path="my-loans" element={<MyLoans />} />
+            <Route path="profile" element={<Profile />} />
+            <Route
               path="statistics"
               element={
                 <PrivateRoute roles={['ADMIN', 'LIBRARIAN']}>
                   <Statistics />
                 </PrivateRoute>
               }
-            /> */}
+            />
           </Route>
 
           {/* Catch all */}

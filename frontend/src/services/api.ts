@@ -131,6 +131,22 @@ export const booksAPI = {
   update: (id: string, data: any) => api.put(`/books/${id}`, data),
 
   delete: (id: string) => api.delete(`/books/${id}`),
+
+  // Створення книги з файлом (FormData)
+  createWithImage: (formData: FormData) =>
+    api.post("/books", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }),
+
+  // Оновлення книги з файлом (FormData)
+  updateWithImage: (id: string, formData: FormData) =>
+    api.put(`/books/${id}`, formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }),
 };
 
 // Loans API

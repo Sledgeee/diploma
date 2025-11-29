@@ -1,19 +1,24 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAppSelector } from '@/store/hooks';
 import { booksAPI } from '@/services/api';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { CreateBookDialog } from '@/components/books/CreateBookDialog';
 import { Search, BookOpen, Star } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function Books() {
   const navigate = useNavigate();
+  const { user } = useAppSelector((state) => state.auth);
   const [books, setBooks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+
+  const isAdminOrLibrarian = user?.role === 'ADMIN' || user?.role === 'LIBRARIAN';
 
   useEffect(() => {
     loadBooks();
@@ -52,11 +57,18 @@ export function Books() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Каталог книг</h1>
-        <p className="text-muted-foreground">
-          Знайдіть свою наступну улюблену книгу
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Каталог книг</h1>
+          <p className="text-muted-foreground">
+            Знайдіть свою наступну улюблену книгу
+          </p>
+        </div>
+        
+        {/* Button for admins and librarians */}
+        {isAdminOrLibrarian && (
+          <CreateBookDialog onBookCreated={loadBooks} />
+        )}
       </div>
 
       {/* Search */}
@@ -93,8 +105,16 @@ export function Books() {
                 onClick={() => navigate(`/books/${book.id}`)}
               >
                 <CardContent className="p-4">
-                  <div className="aspect-[3/4] bg-muted rounded-lg mb-4 flex items-center justify-center">
-                    <BookOpen className="h-12 w-12 text-muted-foreground" />
+                  <div className="aspect-[3/4] bg-muted rounded-lg mb-4 flex items-center justify-center overflow-hidden">
+                    {book.coverImage ? (
+                      <img
+                        src={import.meta.env.VITE_API_URL?.replace('/api', '') + book.coverImage}
+                        alt={book.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <BookOpen className="h-12 w-12 text-muted-foreground" />
+                    )}
                   </div>
                   <h3 className="font-semibold line-clamp-2 mb-1">
                     {book.title}
