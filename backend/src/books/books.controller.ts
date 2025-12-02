@@ -105,7 +105,7 @@ export class BooksController {
 
   @Get('search')
   async search(
-    @Query('query') query: string,
+    @Query('q') query: string,
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
   ) {

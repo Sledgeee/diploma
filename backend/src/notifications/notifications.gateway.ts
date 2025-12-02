@@ -76,6 +76,8 @@ export class NotificationsGateway
   sendToUser(userId: string, event: string, data: any) {
     const socketId = this.userSockets.get(userId);
 
+    console.log(socketId);
+
     if (socketId) {
       this.server.to(socketId).emit(event, data);
       this.logger.log(`📤 Sent ${event} to user ${userId}`);

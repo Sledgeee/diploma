@@ -1,9 +1,8 @@
 import { Module } from '@nestjs/common';
 import { LoansService } from './loans.service';
 import { LoansController } from './loans.controller';
-import { BullModule } from '@nestjs/bull';
-import { NotificationsProcessor } from './processors';
 import { LoansTasksService } from './loans.tasks';
+import { BullModule } from '@nestjs/bull';
 
 @Module({
   imports: [
@@ -12,7 +11,7 @@ import { LoansTasksService } from './loans.tasks';
     }),
   ],
   controllers: [LoansController],
-  providers: [LoansService, LoansTasksService, NotificationsProcessor],
+  providers: [LoansService, LoansTasksService],
   exports: [LoansService],
 })
 export class LoansModule {}

@@ -21,7 +21,9 @@ export default defineConfig([
     },
     rules: {
       "no-emplicit-any": "off",
+      'no-explicit-any': 'off',
       "no-empty-object-type": "off",
+      "no-unused-vars": "off",
     },
   },
 ]);
