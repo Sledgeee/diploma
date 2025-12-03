@@ -20,6 +20,7 @@ import { FinesModule } from './fines/fines.module';
 import { StatisticsModule } from './statistics/statistics.module';
 import { RecommendationsModule } from './recommendations/recommendations.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { ReservationsModule } from './reservations/reservations.module';
 
 @Module({
   imports: [
@@ -78,6 +79,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     StatisticsModule,
     RecommendationsModule,
     NotificationsModule,
+    ReservationsModule,
   ],
 })
 export class AppModule {}

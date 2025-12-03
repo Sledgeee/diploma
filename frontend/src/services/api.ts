@@ -112,6 +112,9 @@ export const authAPI = {
     api.post("/auth/refresh", { refreshToken }),
 
   getCurrentUser: () => api.get("/auth/me"),
+
+  changePassword: (data: { currentPassword: string; newPassword: string }) =>
+    api.post("/auth/change-password", data),
 };
 
 // Books API
@@ -178,8 +181,13 @@ export const reservationsAPI = {
 
   cancel: (id: string) => api.delete(`/reservations/${id}`),
 
-  getAll: (page = 1, limit = 20) =>
-    api.get(`/reservations?page=${page}&limit=${limit}`),
+  getAll: (page = 1, limit = 20, status?: string) =>
+    api.get(
+      `/reservations?page=${page}&limit=${limit}${status ? `&status=${status}` : ''}`
+    ),
+
+  updateStatus: (id: string, status: string) =>
+    api.patch(`/reservations/${id}/status`, { status }),
 };
 
 // Reviews API

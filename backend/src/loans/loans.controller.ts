@@ -6,11 +6,10 @@ import {
   Patch,
   Post,
   Query,
-  Request,
   UseGuards,
 } from '@nestjs/common';
 import { LoanStatus, UserRole } from '@prisma/client';
-import { Roles } from '../auth/decorators';
+import { CurrentUser, Roles } from '../auth/decorators';
 import { JwtAuthGuard, RolesGuard } from '../auth/guards';
 import { BorrowBookDto, ExtendLoanDto } from './dto';
 import { LoansService } from './loans.service';
@@ -23,8 +22,8 @@ export class LoansController {
   constructor(private readonly loansService: LoansService) {}
 
   @Post('borrow')
-  async borrowBook(@Request() req, @Body() dto: BorrowBookDto) {
-    return this.loansService.borrowBook(req.user.id, dto.bookId);
+  async borrowBook(@CurrentUser() user, @Body() dto: BorrowBookDto) {
+    return this.loansService.borrowBook(user.id, dto.bookId);
   }
 
   @Post(':id/return')
@@ -38,8 +37,8 @@ export class LoansController {
   }
 
   @Get('my')
-  async getMyLoans(@Request() req, @Query('status') status?: LoanStatus) {
-    return this.loansService.getUserLoans(req.user.id, status);
+  async getMyLoans(@CurrentUser() user, @Query('status') status?: LoanStatus) {
+    return this.loansService.getUserLoans(user.id, status);
   }
 
   @Get('statistics')

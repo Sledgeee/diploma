@@ -10,7 +10,7 @@ import { JwtService } from '@nestjs/jwt';
 import { User, UserRole } from '@prisma/client';
 import { Cache } from 'cache-manager';
 import { v4 as uuidv4 } from 'uuid';
-import { LoginDto, RegisterDto } from './dto';
+import { ChangePasswordDto, LoginDto, RegisterDto } from './dto';
 import { PrismaService } from 'nestjs-prisma';
 import { compare, hash } from 'bcryptjs';
 
@@ -207,5 +207,32 @@ export class AuthService {
 
   async invalidateUserCache(userId: string) {
     await this.cacheManager.del(`user:${userId}`);
+  }
+
+  async changePassword(userId: string, dto: ChangePasswordDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const isValid = await compare(dto.currentPassword, user.password);
+
+    if (!isValid) {
+      throw new BadRequestException('Current password is incorrect');
+    }
+
+    const hashed = await hash(dto.newPassword, 10);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { password: hashed },
+    });
+
+    await this.invalidateUserCache(userId);
+
+    return { message: 'Password updated successfully' };
   }
 }

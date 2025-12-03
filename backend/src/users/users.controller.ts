@@ -5,11 +5,10 @@ import {
   Param,
   Put,
   Query,
-  Request,
   UseGuards,
 } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
-import { Roles } from '../auth/decorators';
+import { CurrentUser, Roles } from '../auth/decorators';
 import { JwtAuthGuard, RolesGuard } from '../auth/guards';
 import { UsersService } from './users.service';
 import { ApiBearerAuth } from '@nestjs/swagger';
@@ -32,13 +31,13 @@ export class UsersController {
   }
 
   @Get('profile')
-  async getProfile(@Request() req) {
-    return this.usersService.findOne(req.user.id);
+  async getProfile(@CurrentUser() user) {
+    return this.usersService.findOne(user.id);
   }
 
   @Put('profile')
-  async updateProfile(@Request() req, @Body() data: any) {
-    return this.usersService.updateProfile(req.user.id, data);
+  async updateProfile(@CurrentUser() user, @Body() data: any) {
+    return this.usersService.updateProfile(user.id, data);
   }
 
   @Get(':id')

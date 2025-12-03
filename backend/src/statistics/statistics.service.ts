@@ -13,7 +13,7 @@ export class StatisticsService {
 
   async getDashboardStats() {
     const cacheKey = 'statistics:dashboard';
-    
+
     const cached = await this.cacheManager.get(cacheKey);
     if (cached) {
       return JSON.parse(cached as string);
@@ -72,37 +72,40 @@ export class StatisticsService {
 
   async getPopularGenres(limit: number = 10) {
     const cacheKey = `statistics:popular-genres:${limit}`;
-    
+
     const cached = await this.cacheManager.get(cacheKey);
     if (cached) {
       return JSON.parse(cached as string);
     }
 
     const books = await this.prisma.book.findMany({
-      select: { 
-        genres: true, 
+      select: {
+        genres: true,
         borrowCount: true,
         averageRating: true,
       },
     });
 
-    const genreStats = books.reduce((acc, book) => {
-      book.genres.forEach(genre => {
-        if (!acc[genre]) {
-          acc[genre] = { 
-            genre, 
-            booksCount: 0, 
-            totalBorrows: 0,
-            averageRating: 0,
-            ratingSum: 0,
-          };
-        }
-        acc[genre].booksCount += 1;
-        acc[genre].totalBorrows += book.borrowCount;
-        acc[genre].ratingSum += Number(book.averageRating);
-      });
-      return acc;
-    }, {} as Record<string, any>);
+    const genreStats = books.reduce(
+      (acc, book) => {
+        book.genres.forEach((genre) => {
+          if (!acc[genre]) {
+            acc[genre] = {
+              genre,
+              booksCount: 0,
+              totalBorrows: 0,
+              averageRating: 0,
+              ratingSum: 0,
+            };
+          }
+          acc[genre].booksCount += 1;
+          acc[genre].totalBorrows += book.borrowCount;
+          acc[genre].ratingSum += Number(book.averageRating);
+        });
+        return acc;
+      },
+      {} as Record<string, any>,
+    );
 
     const result = Object.values(genreStats)
       .map((stat: any) => ({
@@ -115,14 +118,18 @@ export class StatisticsService {
       .slice(0, limit);
 
     // Кешуємо на 1 годину
-    await this.cacheManager.set(cacheKey, JSON.stringify(result), 60 * 60 * 1000);
+    await this.cacheManager.set(
+      cacheKey,
+      JSON.stringify(result),
+      60 * 60 * 1000,
+    );
 
     return result;
   }
 
   async getMonthlyStats(months: number = 6) {
     const cacheKey = `statistics:monthly:${months}`;
-    
+
     const cached = await this.cacheManager.get(cacheKey);
     if (cached) {
       return JSON.parse(cached as string);
@@ -154,7 +161,10 @@ export class StatisticsService {
       }),
     ]);
 
-    const monthlyData: Record<string, { loans: number; registrations: number }> = {};
+    const monthlyData: Record<
+      string,
+      { loans: number; registrations: number }
+    > = {};
 
     // Ініціалізуємо всі місяці
     for (let i = 0; i < months; i++) {
@@ -165,7 +175,7 @@ export class StatisticsService {
     }
 
     // Рахуємо позики
-    loans.forEach(loan => {
+    loans.forEach((loan) => {
       const month = loan.borrowDate.toISOString().slice(0, 7);
       if (monthlyData[month]) {
         monthlyData[month].loans += 1;
@@ -173,7 +183,7 @@ export class StatisticsService {
     });
 
     // Рахуємо реєстрації
-    registrations.forEach(user => {
+    registrations.forEach((user) => {
       const month = user.createdAt.toISOString().slice(0, 7);
       if (monthlyData[month]) {
         monthlyData[month].registrations += 1;
@@ -189,14 +199,18 @@ export class StatisticsService {
       .sort((a, b) => a.month.localeCompare(b.month));
 
     // Кешуємо на 1 годину
-    await this.cacheManager.set(cacheKey, JSON.stringify(result), 60 * 60 * 1000);
+    await this.cacheManager.set(
+      cacheKey,
+      JSON.stringify(result),
+      60 * 60 * 1000,
+    );
 
     return result;
   }
 
   async getTopReaders(limit: number = 10) {
     const cacheKey = `statistics:top-readers:${limit}`;
-    
+
     const cached = await this.cacheManager.get(cacheKey);
     if (cached) {
       return JSON.parse(cached as string);
@@ -205,6 +219,7 @@ export class StatisticsService {
     const topReaders = await this.prisma.user.findMany({
       where: {
         isActive: true,
+        role: 'READER',
       },
       select: {
         id: true,
@@ -229,7 +244,7 @@ export class StatisticsService {
       take: limit,
     });
 
-    const result = topReaders.map(user => ({
+    const result = topReaders.map((user) => ({
       id: user.id,
       firstName: user.firstName,
       lastName: user.lastName,
@@ -238,14 +253,18 @@ export class StatisticsService {
     }));
 
     // Кешуємо на 30 хвилин
-    await this.cacheManager.set(cacheKey, JSON.stringify(result), 30 * 60 * 1000);
+    await this.cacheManager.set(
+      cacheKey,
+      JSON.stringify(result),
+      30 * 60 * 1000,
+    );
 
     return result;
   }
 
   async getOverdueBooks() {
     const cacheKey = 'statistics:overdue-books';
-    
+
     const cached = await this.cacheManager.get(cacheKey);
     if (cached) {
       return JSON.parse(cached as string);
@@ -287,10 +306,10 @@ export class StatisticsService {
       },
     });
 
-    const result = overdueLoans.map(loan => {
+    const result = overdueLoans.map((loan) => {
       const now = new Date();
       const daysOverdue = Math.ceil(
-        (now.getTime() - loan.dueDate.getTime()) / (1000 * 60 * 60 * 24)
+        (now.getTime() - loan.dueDate.getTime()) / (1000 * 60 * 60 * 24),
       );
 
       return {
@@ -305,14 +324,18 @@ export class StatisticsService {
     });
 
     // Кешуємо на 5 хвилин (часто міняється)
-    await this.cacheManager.set(cacheKey, JSON.stringify(result), 5 * 60 * 1000);
+    await this.cacheManager.set(
+      cacheKey,
+      JSON.stringify(result),
+      5 * 60 * 1000,
+    );
 
     return result;
   }
 
   async getRevenueStats() {
     const cacheKey = 'statistics:revenue';
-    
+
     const cached = await this.cacheManager.get(cacheKey);
     if (cached) {
       return JSON.parse(cached as string);
@@ -352,7 +375,11 @@ export class StatisticsService {
     };
 
     // Кешуємо на 10 хвилин
-    await this.cacheManager.set(cacheKey, JSON.stringify(result), 10 * 60 * 1000);
+    await this.cacheManager.set(
+      cacheKey,
+      JSON.stringify(result),
+      10 * 60 * 1000,
+    );
 
     return result;
   }
@@ -376,7 +403,7 @@ export class StatisticsService {
 
     const monthlyData: Record<string, number> = {};
 
-    fines.forEach(fine => {
+    fines.forEach((fine) => {
       if (fine.paidDate) {
         const month = fine.paidDate.toISOString().slice(0, 7);
         monthlyData[month] = (monthlyData[month] || 0) + Number(fine.amount);
@@ -393,7 +420,7 @@ export class StatisticsService {
 
   async getBooksStatistics() {
     const cacheKey = 'statistics:books';
-    
+
     const cached = await this.cacheManager.get(cacheKey);
     if (cached) {
       return JSON.parse(cached as string);
@@ -450,7 +477,11 @@ export class StatisticsService {
     };
 
     // Кешуємо на 15 хвилин
-    await this.cacheManager.set(cacheKey, JSON.stringify(result), 15 * 60 * 1000);
+    await this.cacheManager.set(
+      cacheKey,
+      JSON.stringify(result),
+      15 * 60 * 1000,
+    );
 
     return result;
   }

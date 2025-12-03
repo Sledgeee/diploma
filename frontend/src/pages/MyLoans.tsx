@@ -24,9 +24,11 @@ import {
   DollarSign,
   Loader2,
   RotateCw,
+  User,
 } from 'lucide-react';
 import { format, differenceInDays, isPast } from 'date-fns';
 import { uk } from 'date-fns/locale';
+import { useAppSelector } from '@/store/hooks';
 
 interface Loan {
   id: string;
@@ -40,6 +42,12 @@ interface Loan {
     title: string;
     author: string;
     coverImage?: string;
+  };
+  user?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
   };
   fine?: {
     id: string;
@@ -64,6 +72,9 @@ interface Fine {
 
 export function MyLoans() {
   const navigate = useNavigate();
+  const { user } = useAppSelector((state) => state.auth);
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'LIBRARIAN';
+  const filesBaseUrl = (import.meta.env.VITE_API_URL || '').replace('/api', '');
   const [activeLoans, setActiveLoans] = useState<Loan[]>([]);
   const [overdueLoans, setOverdueLoans] = useState<Loan[]>([]);
   const [history, setHistory] = useState<Loan[]>([]);
@@ -80,17 +91,26 @@ export function MyLoans() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [activeRes, overdueRes, historyRes, finesRes] = await Promise.all([
-        loansAPI.getMy('ACTIVE'),
-        loansAPI.getMy('OVERDUE'),
-        loansAPI.getMy('RETURNED'),
-        finesAPI.getMy(),
-      ]);
+      if (isAdmin) {
+        const res = await loansAPI.getAll(1, 100);
+        const loans = res.data.loans || res.data;
+        setActiveLoans(loans.filter((l: any) => l.status === 'ACTIVE'));
+        setOverdueLoans(loans.filter((l: any) => l.status === 'OVERDUE'));
+        setHistory(loans.filter((l: any) => l.status === 'RETURNED'));
+        setFines([]);
+      } else {
+        const [activeRes, overdueRes, historyRes, finesRes] = await Promise.all([
+          loansAPI.getMy('ACTIVE'),
+          loansAPI.getMy('OVERDUE'),
+          loansAPI.getMy('RETURNED'),
+          finesAPI.getMy(),
+        ]);
 
-      setActiveLoans(activeRes.data);
-      setOverdueLoans(overdueRes.data);
-      setHistory(historyRes.data);
-      setFines(finesRes.data);
+        setActiveLoans(activeRes.data);
+        setOverdueLoans(overdueRes.data);
+        setHistory(historyRes.data);
+        setFines(finesRes.data);
+      }
     } catch (error) {
       toast.error('Помилка завантаження даних');
     } finally {
@@ -167,7 +187,7 @@ export function MyLoans() {
             >
               {loan.book.coverImage ? (
                 <img
-                  src={import.meta.env.VITE_API_URL?.replace('/api', '') + loan.book.coverImage}
+                  src={filesBaseUrl + loan.book.coverImage}
                   alt={loan.book.title}
                   className="w-full h-full object-cover rounded"
                 />
@@ -189,6 +209,18 @@ export function MyLoans() {
               </p>
 
               <div className="grid gap-2 text-sm">
+                {isAdmin && loan.user && (
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-muted-foreground">Користувач:</span>
+                    <span className="font-semibold">
+                      {loan.user.firstName} {loan.user.lastName}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {loan.user.email}
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                   <span className="text-muted-foreground">Взято:</span>
@@ -355,9 +387,13 @@ export function MyLoans() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Мої позики</h1>
+        <h1 className="text-3xl font-bold tracking-tight">
+          {isAdmin ? 'Позики користувачів' : 'Мої позики'}
+        </h1>
         <p className="text-muted-foreground">
-          Керуйте своїми позиками та відстежуйте терміни повернення
+          {isAdmin
+            ? 'Переглядайте та керуйте позиками читачів'
+            : 'Керуйте своїми позиками та відстежуйте терміни повернення'}
         </p>
       </div>
 
@@ -370,6 +406,9 @@ export function MyLoans() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{activeLoans.length}</div>
+            {isAdmin && (
+              <p className="text-xs text-muted-foreground">Активні позики читачів</p>
+            )}
           </CardContent>
         </Card>
 
@@ -382,12 +421,17 @@ export function MyLoans() {
             <div className="text-2xl font-bold text-red-600">
               {overdueLoans.length}
             </div>
+            {isAdmin && (
+              <p className="text-xs text-muted-foreground">Потрібна увага</p>
+            )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Всього прочитано</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              {isAdmin ? 'Завершені' : 'Всього прочитано'}
+            </CardTitle>
             <CheckCircle className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
@@ -395,17 +439,19 @@ export function MyLoans() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Штрафи</CardTitle>
-            <DollarSign className="h-4 w-4 text-red-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              {totalPendingFines} грн
-            </div>
-          </CardContent>
-        </Card>
+        {!isAdmin && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Штрафи</CardTitle>
+              <DollarSign className="h-4 w-4 text-red-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-red-600">
+                {totalPendingFines} грн
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Tabs */}
@@ -420,9 +466,11 @@ export function MyLoans() {
           <TabsTrigger value="history">
             Історія ({history.length})
           </TabsTrigger>
-          <TabsTrigger value="fines">
-            Штрафи ({fines.filter((f) => f.status === 'PENDING').length})
-          </TabsTrigger>
+          {!isAdmin && (
+            <TabsTrigger value="fines">
+              Штрафи ({fines.filter((f) => f.status === 'PENDING').length})
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="active" className="space-y-4">
@@ -431,14 +479,16 @@ export function MyLoans() {
               <CardContent className="p-12 text-center">
                 <BookOpen className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                 <p className="text-muted-foreground">
-                  У вас немає активних позик
+                  {isAdmin ? 'Немає активних позик' : 'У вас немає активних позик'}
                 </p>
-                <Button
-                  className="mt-4"
-                  onClick={() => navigate('/books')}
-                >
-                  Знайти книги
-                </Button>
+                {!isAdmin && (
+                  <Button
+                    className="mt-4"
+                    onClick={() => navigate('/books')}
+                  >
+                    Знайти книги
+                  </Button>
+                )}
               </CardContent>
             </Card>
           ) : (
@@ -452,7 +502,9 @@ export function MyLoans() {
               <CardContent className="p-12 text-center">
                 <CheckCircle className="h-12 w-12 mx-auto mb-4 text-green-600" />
                 <p className="text-muted-foreground">
-                  У вас немає прострочених книг. Чудова робота! 🎉
+                  {isAdmin
+                    ? 'Прострочених позик немає'
+                    : 'У вас немає прострочених книг. Чудова робота! 🎉'}
                 </p>
               </CardContent>
             </Card>
@@ -479,7 +531,7 @@ export function MyLoans() {
               <CardContent className="p-12 text-center">
                 <BookOpen className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                 <p className="text-muted-foreground">
-                  Історія позик порожня
+                  {isAdmin ? 'Немає завершених позик' : 'Історія позик порожня'}
                 </p>
               </CardContent>
             </Card>
@@ -490,20 +542,22 @@ export function MyLoans() {
           )}
         </TabsContent>
 
-        <TabsContent value="fines" className="space-y-4">
-          {fines.length === 0 ? (
-            <Card>
-              <CardContent className="p-12 text-center">
-                <CheckCircle className="h-12 w-12 mx-auto mb-4 text-green-600" />
-                <p className="text-muted-foreground">
-                  У вас немає штрафів. Відмінно! 👏
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            fines.map((fine) => <FineCard key={fine.id} fine={fine} />)
-          )}
-        </TabsContent>
+        {!isAdmin && (
+          <TabsContent value="fines" className="space-y-4">
+            {fines.length === 0 ? (
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <CheckCircle className="h-12 w-12 mx-auto mb-4 text-green-600" />
+                  <p className="text-muted-foreground">
+                    У вас немає штрафів. Відмінно! 👏
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              fines.map((fine) => <FineCard key={fine.id} fine={fine} />)
+            )}
+          </TabsContent>
+        )}
       </Tabs>
 
       {/* Return confirmation dialog */}

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAppSelector } from '@/store/hooks';
-import { booksAPI, loansAPI, reviewsAPI } from '@/services/api';
+import { booksAPI, loansAPI, reservationsAPI, reviewsAPI } from '@/services/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -26,8 +26,10 @@ import {
   Trash2,
   Edit,
   BookMarked,
+  BellRing,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { EditBookDialog } from '@/components/books/EditBookDialog';
 
 interface BookDetails {
   id: string;
@@ -62,6 +64,7 @@ export function BookDetails() {
   const [book, setBook] = useState<BookDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [borrowing, setBorrowing] = useState(false);
+  const [reserving, setReserving] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -98,6 +101,23 @@ export function BookDetails() {
       toast.error(error.response?.data?.message || 'Помилка позики книги');
     } finally {
       setBorrowing(false);
+    }
+  };
+
+  const handleReserve = async () => {
+    if (!book) return;
+
+    try {
+      setReserving(true);
+      await reservationsAPI.create(book.id);
+      toast.success('Книгу додано до списку бронювань. Ми сповістимо вас!');
+      loadBook();
+    } catch (error: any) {
+      toast.error(
+        error.response?.data?.message || 'Не вдалося забронювати книгу',
+      );
+    } finally {
+      setReserving(false);
     }
   };
 
@@ -138,13 +158,16 @@ export function BookDetails() {
 
         {isAdmin && (
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => navigate(`/books/${book.id}/edit`)}
-            >
-              <Edit className="h-4 w-4 mr-2" />
-              Редагувати
-            </Button>
+            <EditBookDialog
+              bookId={book.id}
+              onBookUpdated={loadBook}
+              trigger={
+                <Button variant="outline">
+                  <Edit className="h-4 w-4 mr-2" />
+                  Редагувати
+                </Button>
+              }
+            />
             <Button
               variant="destructive"
               onClick={() => setDeleteDialogOpen(true)}
@@ -194,14 +217,28 @@ export function BookDetails() {
               </div>
 
               {user?.role === 'READER' && (
-                <Button
-                  className="w-full"
-                  disabled={book.availableCopies === 0 || borrowing}
-                  onClick={handleBorrow}
-                >
-                  <BookMarked className="h-4 w-4 mr-2" />
-                  {borrowing ? 'Позичення...' : 'Позичити книгу'}
-                </Button>
+                <div className="space-y-2">
+                  <Button
+                    className="w-full"
+                    disabled={book.availableCopies === 0 || borrowing}
+                    onClick={handleBorrow}
+                  >
+                    <BookMarked className="h-4 w-4 mr-2" />
+                    {borrowing ? 'Позичення...' : 'Позичити книгу'}
+                  </Button>
+
+                  {book.availableCopies === 0 && (
+                    <Button
+                      className="w-full"
+                      variant="outline"
+                      onClick={handleReserve}
+                      disabled={reserving}
+                    >
+                      <BellRing className="h-4 w-4 mr-2" />
+                      {reserving ? 'Бронювання...' : 'Забронювати книгу'}
+                    </Button>
+                  )}
+                </div>
               )}
             </CardContent>
           </Card>

@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Search, BookOpen, Star, MoreVertical, Trash2, Edit } from 'lucide-react';
 import { toast } from 'sonner';
+import { EditBookDialog } from '@/components/books/EditBookDialog';
 
 interface Book {
   id: string;
@@ -45,17 +46,20 @@ export function Books() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [bookToDelete, setBookToDelete] = useState<Book | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [editingBookId, setEditingBookId] = useState<string | null>(null);
 
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'LIBRARIAN';
+  const filesBaseUrl = (import.meta.env.VITE_API_URL || '').replace('/api', '');
+  const pageSize = isAdmin ? 10 : 12;
 
   useEffect(() => {
     loadBooks();
-  }, [page]);
+  }, [page, pageSize]);
 
   const loadBooks = async () => {
     try {
       setLoading(true);
-      const response = await booksAPI.getAll(page, 12);
+      const response = await booksAPI.getAll(page, pageSize);
       setBooks(response.data.books);
       setTotal(response.data.total);
     } catch (error) {
@@ -73,7 +77,7 @@ export function Books() {
 
     try {
       setLoading(true);
-      const response = await booksAPI.search(searchQuery, page, 12);
+      const response = await booksAPI.search(searchQuery, page, pageSize);
       setBooks(response.data.books);
       setTotal(response.data.total);
     } catch (error) {
@@ -109,6 +113,19 @@ export function Books() {
 
   return (
     <div className="space-y-6">
+      {editingBookId && (
+        <EditBookDialog
+          bookId={editingBookId}
+          open={!!editingBookId}
+          onOpenChange={(open) => {
+            if (!open) setEditingBookId(null);
+          }}
+          onBookUpdated={() => {
+            loadBooks();
+            setEditingBookId(null);
+          }}
+        />
+      )}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Каталог книг</h1>
@@ -139,7 +156,7 @@ export function Books() {
         </Button>
       </div>
 
-      {/* Books Grid */}
+      {/* Books */}
       {loading ? (
         <div className="text-center py-12">
           <p className="text-muted-foreground">Завантаження...</p>
@@ -150,70 +167,76 @@ export function Books() {
         </div>
       ) : (
         <>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {books.map((book) => (
-              <Card key={book.id} className="group relative">
-                <CardContent className="p-4">
-                  <div
-                    className="cursor-pointer"
-                    onClick={() => navigate(`/books/${book.id}`)}
-                  >
-                    <div className="aspect-[3/4] bg-muted rounded-lg mb-4 flex items-center justify-center">
+          {isAdmin ? (
+            <div className="space-y-3">
+              {books.map((book) => (
+                <Card key={book.id}>
+                  <CardContent className="p-4 flex items-center gap-4">
+                    <div className="w-14 h-20 bg-muted rounded overflow-hidden flex items-center justify-center cursor-pointer"
+                      onClick={() => navigate(`/books/${book.id}`)}
+                    >
                       {book.coverImage ? (
                         <img
-                          src={import.meta.env.VITE_API_URL?.replace('/api', '') + book.coverImage}
+                          src={filesBaseUrl + book.coverImage}
                           alt={book.title}
-                          className="w-full h-full object-cover rounded-lg"
+                          className="w-full h-full object-cover"
                         />
                       ) : (
-                        <BookOpen className="h-12 w-12 text-muted-foreground" />
+                        <BookOpen className="h-6 w-6 text-muted-foreground" />
                       )}
                     </div>
-                    <h3 className="font-semibold line-clamp-2 mb-1">
-                      {book.title}
-                    </h3>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      {book.author}
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <Star className="h-4 w-4 fill-yellow-400 text-yellow-400 mr-1" />
-                        <span className="text-sm">
-                          {Number(book.averageRating).toFixed(1)}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <h3
+                          className="font-semibold cursor-pointer hover:text-primary"
+                          onClick={() => navigate(`/books/${book.id}`)}
+                        >
+                          {book.title}
+                        </h3>
+                        <span
+                          className={`text-xs px-2 py-1 rounded ${
+                            book.availableCopies > 0
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-red-100 text-red-700'
+                          }`}
+                        >
+                          {book.availableCopies > 0 ? 'Доступна' : 'Недоступна'}
                         </span>
                       </div>
-                      <span
-                        className={`text-xs px-2 py-1 rounded ${
-                          book.availableCopies > 0
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-red-100 text-red-700'
-                        }`}
-                      >
-                        {book.availableCopies > 0 ? 'Доступна' : 'Недоступна'}
-                      </span>
+                      <p className="text-sm text-muted-foreground">
+                        {book.author}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        ISBN: {book.isbn}
+                      </p>
+                      <div className="flex items-center gap-4 mt-2 text-sm">
+                        <div className="flex items-center">
+                          <Star className="h-4 w-4 fill-yellow-400 text-yellow-400 mr-1" />
+                          <span>{Number(book.averageRating).toFixed(1)}</span>
+                        </div>
+                        <span className="text-muted-foreground">
+                          Доступно: {book.availableCopies}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-
-                  {/* Admin Actions */}
-                  {isAdmin && (
-                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-2">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="secondary"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={(e) => e.stopPropagation()}
-                          >
+                          <Button variant="outline" size="icon">
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteClick(book);
+                            onSelect={() => {
+                              setEditingBookId(book.id);
                             }}
+                          >
+                            <Edit className="h-4 w-4 mr-2" />
+                            Редагувати
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleDeleteClick(book)}
                             className="text-destructive"
                           >
                             <Trash2 className="h-4 w-4 mr-2" />
@@ -222,11 +245,97 @@ export function Books() {
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {books.map((book) => (
+                <Card key={book.id} className="group relative">
+                  <CardContent className="p-4">
+                    <div
+                      className="cursor-pointer"
+                      onClick={() => navigate(`/books/${book.id}`)}
+                    >
+                      <div className="aspect-[3/4] bg-muted rounded-lg mb-4 flex items-center justify-center">
+                        {book.coverImage ? (
+                          <img
+                            src={filesBaseUrl + book.coverImage}
+                            alt={book.title}
+                            className="w-full h-full object-cover rounded-lg"
+                          />
+                        ) : (
+                          <BookOpen className="h-12 w-12 text-muted-foreground" />
+                        )}
+                      </div>
+                      <h3 className="font-semibold line-clamp-2 mb-1">
+                        {book.title}
+                      </h3>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        {book.author}
+                      </p>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <Star className="h-4 w-4 fill-yellow-400 text-yellow-400 mr-1" />
+                          <span className="text-sm">
+                            {Number(book.averageRating).toFixed(1)}
+                          </span>
+                        </div>
+                        <span
+                          className={`text-xs px-2 py-1 rounded ${
+                            book.availableCopies > 0
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-red-100 text-red-700'
+                          }`}
+                        >
+                          {book.availableCopies > 0 ? 'Доступна' : 'Недоступна'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Admin Actions */}
+                    {isAdmin && (
+                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="secondary"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onSelect={() => {
+                                  setEditingBookId(book.id);
+                                }}
+                              >
+                                <Edit className="h-4 w-4 mr-2" />
+                                Редагувати
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteClick(book);
+                                }}
+                                className="text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Видалити
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
 
           {/* Pagination */}
           <div className="flex justify-center gap-2">
@@ -243,7 +352,7 @@ export function Books() {
             <Button
               variant="outline"
               onClick={() => setPage((p) => p + 1)}
-              disabled={page * 12 >= total}
+              disabled={page * pageSize >= total}
             >
               Наступна
             </Button>

@@ -6,10 +6,17 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { BookStatus, FineStatus, Loan, LoanStatus } from '@prisma/client';
+import {
+  BookStatus,
+  FineStatus,
+  Loan,
+  LoanStatus,
+  ReservationStatus,
+} from '@prisma/client';
 import { Queue } from 'bull';
 import { Cache } from 'cache-manager';
 import { PrismaService } from 'nestjs-prisma';
+import { ReservationsService } from '../reservations/reservations.service';
 
 @Injectable()
 export class LoansService {
@@ -22,9 +29,12 @@ export class LoansService {
     private notificationsQueue: Queue,
     @Inject(CACHE_MANAGER)
     private cacheManager: Cache,
+    private readonly reservationsService: ReservationsService,
   ) {}
 
   async borrowBook(userId: string, bookId: string): Promise<Loan> {
+    await this.reservationsService.releaseExpiredForBook(bookId);
+
     // Використовуємо транзакцію для атомарності операції
     return await this.prisma
       .$transaction(async (tx) => {
@@ -71,8 +81,20 @@ export class LoansService {
           );
         }
 
+        // Перевіряємо чи є бронювання для цього користувача
+        const readyReservation = await tx.reservation.findFirst({
+          where: {
+            userId,
+            bookId,
+            status: ReservationStatus.READY,
+            expiryDate: {
+              gt: new Date(),
+            },
+          },
+        });
+
         // Перевіряємо доступність книги
-        if (book.availableCopies <= 0) {
+        if (!readyReservation && book.availableCopies <= 0) {
           throw new BadRequestException('Book is not available for borrowing');
         }
 
@@ -123,22 +145,40 @@ export class LoansService {
           },
         });
 
-        // Оновлюємо доступність книги
-        await tx.book.update({
-          where: { id: bookId },
-          data: {
-            availableCopies: {
-              decrement: 1,
+        // Оновлюємо доступність книги та бронювання
+        if (readyReservation) {
+          await tx.reservation.update({
+            where: { id: readyReservation.id },
+            data: { status: ReservationStatus.COMPLETED },
+          });
+
+          await tx.book.update({
+            where: { id: bookId },
+            data: {
+              borrowCount: {
+                increment: 1,
+              },
+              status:
+                book.availableCopies <= 0 ? BookStatus.BORROWED : book.status,
             },
-            borrowCount: {
-              increment: 1,
+          });
+        } else {
+          await tx.book.update({
+            where: { id: bookId },
+            data: {
+              availableCopies: {
+                decrement: 1,
+              },
+              borrowCount: {
+                increment: 1,
+              },
+              status:
+                book.availableCopies - 1 === 0
+                  ? BookStatus.BORROWED
+                  : book.status,
             },
-            status:
-              book.availableCopies - 1 === 0
-                ? BookStatus.BORROWED
-                : book.status,
-          },
-        });
+          });
+        }
 
         return loan;
       })
@@ -274,6 +314,7 @@ export class LoansService {
         // Інвалідуємо кеш
         await this.invalidateLoansCache(loan.userId);
         await this.cacheManager.del(`book:${loan.bookId}`);
+        await this.reservationsService.activateNextReservation(loan.bookId);
 
         return loan;
       });
@@ -386,6 +427,7 @@ export class LoansService {
               title: true,
               author: true,
               isbn: true,
+              coverImage: true,
             },
           },
           user: {
@@ -436,6 +478,7 @@ export class LoansService {
             id: true,
             title: true,
             author: true,
+            coverImage: true,
           },
         },
       },

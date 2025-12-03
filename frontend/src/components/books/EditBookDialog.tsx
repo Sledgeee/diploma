@@ -15,10 +15,14 @@ import {
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { Pencil, Upload, X, Loader2, Image } from 'lucide-react';
+import { ReactNode } from 'react';
 
 interface EditBookDialogProps {
   bookId: string;
   onBookUpdated?: () => void;
+  trigger?: ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 const GENRES = [
@@ -44,12 +48,24 @@ const GENRES = [
   'Саморозвиток',
 ];
 
-export function EditBookDialog({ bookId, onBookUpdated }: EditBookDialogProps) {
-  const [open, setOpen] = useState(false);
+export function EditBookDialog({
+  bookId,
+  onBookUpdated,
+  trigger,
+  open,
+  onOpenChange,
+}: EditBookDialogProps) {
+  const [innerOpen, setInnerOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const isOpen = open ?? innerOpen;
+
+  const handleOpenChange = (next: boolean) => {
+    setInnerOpen(next);
+    onOpenChange?.(next);
+  };
 
   const [formData, setFormData] = useState({
     isbn: '',
@@ -64,10 +80,10 @@ export function EditBookDialog({ bookId, onBookUpdated }: EditBookDialogProps) {
   });
 
   useEffect(() => {
-    if (open) {
+    if (isOpen) {
       loadBookData();
     }
-  }, [open, bookId]);
+  }, [isOpen, bookId]);
 
   const loadBookData = async () => {
     try {
@@ -174,7 +190,7 @@ export function EditBookDialog({ bookId, onBookUpdated }: EditBookDialogProps) {
       await booksAPI.updateWithImage(bookId, data);
 
       toast.success('Книгу успішно оновлено! ✅');
-      setOpen(false);
+      handleOpenChange(false);
       onBookUpdated?.();
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Помилка оновлення книги');
@@ -184,13 +200,12 @@ export function EditBookDialog({ bookId, onBookUpdated }: EditBookDialogProps) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Pencil className="h-4 w-4 mr-2" />
-          Редагувати
-        </Button>
-      </DialogTrigger>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      {trigger && (
+        <DialogTrigger asChild>
+          {trigger}
+        </DialogTrigger>
+      )}
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Редагувати книгу</DialogTitle>

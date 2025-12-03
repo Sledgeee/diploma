@@ -8,12 +8,12 @@ import {
   Param,
   Query,
   UseGuards,
-  Request,
 } from '@nestjs/common';
 import { ReviewsService } from './reviews.service';
 import { CreateReviewDto, UpdateReviewDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards';
 import { ApiBearerAuth } from '@nestjs/swagger';
+import { CurrentUser } from '../auth/decorators';
 
 @ApiBearerAuth()
 @Controller('reviews')
@@ -22,13 +22,13 @@ export class ReviewsController {
   constructor(private readonly reviewsService: ReviewsService) {}
 
   @Post()
-  async create(@Request() req, @Body() dto: CreateReviewDto) {
-    return this.reviewsService.create(req.user.id, dto);
+  async create(@CurrentUser() user, @Body() dto: CreateReviewDto) {
+    return this.reviewsService.create(user.id, dto);
   }
 
   @Get('my')
-  async getMyReviews(@Request() req) {
-    return this.reviewsService.getUserReviews(req.user.id);
+  async getMyReviews(@CurrentUser() user) {
+    return this.reviewsService.getUserReviews(user.id);
   }
 
   @Get('book/:bookId')
@@ -57,14 +57,14 @@ export class ReviewsController {
   @Put(':id')
   async update(
     @Param('id') id: string,
-    @Request() req,
+    @CurrentUser() user,
     @Body() dto: UpdateReviewDto,
   ) {
-    return this.reviewsService.update(id, req.user.id, dto);
+    return this.reviewsService.update(id, user.id, dto);
   }
 
   @Delete(':id')
-  async delete(@Param('id') id: string, @Request() req) {
-    return this.reviewsService.delete(id, req.user.id);
+  async delete(@Param('id') id: string, @CurrentUser() user) {
+    return this.reviewsService.delete(id, user.id);
   }
 }

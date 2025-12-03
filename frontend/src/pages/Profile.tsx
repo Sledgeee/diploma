@@ -99,8 +99,10 @@ export function Profile() {
 
     try {
       setSaving(true);
-      // API endpoint для зміни пароля (потрібно додати на backend)
-      // await usersAPI.changePassword(passwordData);
+      await authAPI.changePassword({
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword,
+      });
       toast.success('Пароль змінено успішно!');
       setPasswordData({
         currentPassword: '',

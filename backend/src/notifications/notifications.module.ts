@@ -17,5 +17,6 @@ import { NotificationsProcessor } from './processors';
     NotificationsGateway,
     NotificationsProcessor,
   ],
+  exports: [NotificationsService],
 })
 export class NotificationsModule {}

@@ -4,7 +4,6 @@ import {
   Param,
   Query,
   UseGuards,
-  Request,
 } from '@nestjs/common';
 import { RecommendationsService } from './recommendations.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -12,6 +11,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
 import { ApiBearerAuth } from '@nestjs/swagger';
+import { CurrentUser } from '../auth/decorators';
 
 @ApiBearerAuth()
 @Controller('recommendations')
@@ -23,11 +23,11 @@ export class RecommendationsController {
 
   @Get('personal')
   async getPersonalRecommendations(
-    @Request() req,
+    @CurrentUser() user,
     @Query('limit') limit: number = 10,
   ) {
     return this.recommendationsService.getPersonalizedRecommendations(
-      req.user.id,
+      user.id,
       Number(limit),
     );
   }
@@ -53,12 +53,12 @@ export class RecommendationsController {
   @Get('by-genre/:genre')
   async getRecommendationsByGenre(
     @Param('genre') genre: string,
-    @Request() req,
+    @CurrentUser() user,
     @Query('limit') limit: number = 10,
   ) {
     return this.recommendationsService.getByGenre(
       genre,
-      req.user.id,
+      user.id,
       Number(limit),
     );
   }

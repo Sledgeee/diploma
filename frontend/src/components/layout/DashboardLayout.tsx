@@ -24,6 +24,7 @@ import {
   Menu,
   X,
   BarChart3,
+  BellRing,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -46,14 +47,34 @@ export function DashboardLayout() {
     }
   };
 
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'LIBRARIAN';
+
   const menuItems = [
     { icon: LayoutDashboard, label: 'Головна', path: '/dashboard' },
     { icon: Library, label: 'Каталог книг', path: '/books' },
-    { icon: BookMarked, label: 'Мої позики', path: '/my-loans' },
+    {
+      icon: BookMarked,
+      label: isAdmin ? 'Позики' : 'Мої позики',
+      path: '/loans',
+    },
     { icon: User, label: 'Профіль', path: '/profile' },
   ];
 
-  if (user?.role === 'ADMIN' || user?.role === 'LIBRARIAN') {
+  if (!isAdmin) {
+    menuItems.splice(3, 0, {
+      icon: BellRing,
+      label: 'Мої бронювання',
+      path: '/my-reservations',
+    });
+  }
+
+  if (isAdmin) {
+    menuItems.splice(2, 0, {
+      icon: BellRing,
+      label: 'Бронювання',
+      path: '/reservations',
+    });
+
     menuItems.push({
       icon: BarChart3,
       label: 'Статистика',

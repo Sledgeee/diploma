@@ -112,6 +112,11 @@ export class BooksController {
     return this.booksService.search(query, page, limit);
   }
 
+  @Get('popular')
+  async getPopular(@Query('limit') limit: number = 10) {
+    return this.booksService.getPopularBooks(Number(limit));
+  }
+
   @Get(':id')
   async findOne(@Param('id') id: string) {
     return this.booksService.findOne(id);

@@ -12,6 +12,9 @@ import { BookDetails } from './pages/BookDetails';
 import { MyLoans } from './pages/MyLoans';
 import { Profile } from './pages/Profile';
 import { Statistics } from './pages/Statistics';
+import { MyReservations } from './pages/MyReservations';
+import { Settings } from './pages/Settings';
+import { AdminReservations } from './pages/AdminReservations';
 
 function App() {
   return (
@@ -35,8 +38,25 @@ function App() {
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="books" element={<Books />} />
             <Route path="books/:id" element={<BookDetails />} />
-            <Route path="my-loans" element={<MyLoans />} />
+            <Route path="loans" element={<MyLoans />} />
+            <Route
+              path="my-reservations"
+              element={
+                <PrivateRoute roles={['READER']}>
+                  <MyReservations />
+                </PrivateRoute>
+              }
+            />
             <Route path="profile" element={<Profile />} />
+            <Route path="settings" element={<Settings />} />
+            <Route
+              path="reservations"
+              element={
+                <PrivateRoute roles={['ADMIN', 'LIBRARIAN']}>
+                  <AdminReservations />
+                </PrivateRoute>
+              }
+            />
             <Route
               path="statistics"
               element={
